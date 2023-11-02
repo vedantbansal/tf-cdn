@@ -28,10 +28,10 @@ resource "aws_s3_bucket" "my-bucket" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "ownership_controls" {
-    bucket = aws_s3_bucket.my-bucket.id
-    rule {
-        object_ownership = "BucketOwnerPreferred"
-    }
+  bucket = aws_s3_bucket.my-bucket.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
 }
 
 resource "aws_s3_bucket_acl" "bucket_acl" {
@@ -46,25 +46,25 @@ locals {
 }
 
 
-resource "aws_s3_bucket_policy" "allow_access"{
-    bucket = aws_s3_bucket.my-bucket.id
-    policy = data.aws_iam_policy_document.allow_access.json
+resource "aws_s3_bucket_policy" "allow_access" {
+  bucket = aws_s3_bucket.my-bucket.id
+  policy = data.aws_iam_policy_document.allow_access.json
 }
 
 data "aws_iam_policy_document" "allow_access" {
-    statement {
-        principals {
-           type = "Service"
-           identifiers = ["cloudfront.amazonaws.com"]
-        }
-       actions = [ "s3:*" ]
-       resources = [ "${aws_s3_bucket.my-bucket.arn}", "${aws_s3_bucket.my-bucket.arn}/*"  ]
-       condition {
-         test = "StringEquals"
-         variable = "AWS:SourceArn"
-         values = ["${aws_cloudfront_distribution.s3_distribution.arn}"]
-       }
+  statement {
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
     }
+    actions   = ["s3:*"]
+    resources = ["${aws_s3_bucket.my-bucket.arn}", "${aws_s3_bucket.my-bucket.arn}/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = ["${aws_cloudfront_distribution.s3_distribution.arn}"]
+    }
+  }
 }
 
 resource "aws_cloudfront_origin_access_control" "example" {
@@ -76,9 +76,9 @@ resource "aws_cloudfront_origin_access_control" "example" {
 
 resource "aws_cloudfront_distribution" "s3_distribution" {
   origin {
-    domain_name = aws_s3_bucket.my-bucket.bucket_regional_domain_name
+    domain_name              = aws_s3_bucket.my-bucket.bucket_regional_domain_name
     origin_access_control_id = aws_cloudfront_origin_access_control.example.id
-    origin_id   = local.s3_origin_id
+    origin_id                = local.s3_origin_id
 
   }
   enabled             = true
@@ -114,7 +114,7 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
-  
+
 }
 
 
