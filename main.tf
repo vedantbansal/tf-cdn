@@ -19,6 +19,20 @@ resource "aws_s3_bucket" "my-bucket" {
   }
 }
 
+resource "aws_s3_bucket_ownership_controls" "ownership_controls" {
+    bucket = aws_s3_bucket.my-bucket.id
+    rule {
+        object_ownership = "BucketOwnerPreferred"
+    }
+}
+
+resource "aws_s3_bucket_acl" "bucket_acl" {
+  depends_on = [aws_s3_bucket_ownership_controls.ownership_controls]
+
+  bucket = aws_s3_bucket.my-bucket.id
+  acl    = "private"
+}
+
 locals {
   s3_origin_id = "vedtestcdn"
 }
@@ -31,12 +45,12 @@ resource "aws_s3_bucket_policy" "allow_access"{
 
 data "aws_iam_policy_document" "allow_access" {
     statement {
-        actions = [ "s3:*" ]
-        resources = [ "${aws_s3_bucket.my-bucket.arn}", "${aws_s3_bucket.my-bucket.arn}/*"  ]
         principals {
            type = "Service"
            identifiers = ["cloudfront.amazonaws.com"]
         }
+       actions = [ "s3:*" ]
+       resources = [ "${aws_s3_bucket.my-bucket.arn}", "${aws_s3_bucket.my-bucket.arn}/*"  ]
        condition {
          test = "StringEquals"
          variable = "AWS:SourceArn"
@@ -45,17 +59,19 @@ data "aws_iam_policy_document" "allow_access" {
     }
 }
 
-resource "aws_cloudfront_origin_access_identity" "my_origin_access_identity" {
+resource "aws_cloudfront_origin_access_control" "example" {
+  name                              = "example"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
 }
 
 resource "aws_cloudfront_distribution" "s3_distribution" {
   origin {
     domain_name = aws_s3_bucket.my-bucket.bucket_regional_domain_name
+    origin_access_control_id = aws_cloudfront_origin_access_control.example.id
     origin_id   = local.s3_origin_id
 
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.my_origin_access_identity.cloudfront_access_identity_path
-    }
   }
   enabled             = true
   is_ipv6_enabled     = true
@@ -63,12 +79,21 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   default_root_object = "index.html"
 
   default_cache_behavior {
-    cache_policy_id  = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = local.s3_origin_id
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
 
     viewer_protocol_policy = "allow-all"
+    min_ttl                = 0
+    default_ttl            = 3600
+    max_ttl                = 86400
   }
 
   restrictions {
@@ -81,8 +106,11 @@ resource "aws_cloudfront_distribution" "s3_distribution" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
-
+  
 }
 
 
+output "distribution_id" {
+    value = "${aws_cloudfront_distribution.s3_distribution.id}"
+}
 
