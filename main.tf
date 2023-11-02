@@ -1,4 +1,12 @@
 terraform {
+  backend "s3" {
+    bucket         = "<bucket in backend>"
+    key            = "global/s3/terraform.tfstate"
+    region         = "us-east-2"
+    dynamodb_table = "<Dynamo db table for locking>"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -12,7 +20,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "my-bucket" {
-  bucket = "ved-int-test11"
+  bucket = "<unique name for bucket>"
 
   tags = {
     Name = "My bucket"
